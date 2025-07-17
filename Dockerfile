@@ -1,6 +1,7 @@
 FROM eclipse-temurin:21 AS build
 WORKDIR /app
 COPY . .
+RUN chmod +x gradlew
 RUN ./gradlew bootJar
 
 FROM gcr.io/distroless/java21-debian12 AS final
