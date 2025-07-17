@@ -1,0 +1,32 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Log in to Docker Hub
+      run: echo "${{ secrets.DOCKER_KEY }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+    - name: Set version tag
+      id: vars
+      run: echo "TAG=$(date +%Y%m%d%H%M%S)" >> $GITHUB_ENV
+
+    - name: Build Docker image with tags
+      run: |
+        docker build . \
+          -t polterfox/dev.robertwolf.fopservice:latest \
+          -t polterfox/dev.robertwolf.fopservice:${{ env.TAG }}
+
+    - name: Push both tags
+      run: |
+        docker push polterfox/dev.robertwolf.fopservice:latest
+        docker push polterfox/dev.robertwolf.fopservice:${{ env.TAG }}
