@@ -1,16 +1,31 @@
 package dev.robertwolf.FOPService;
 
-import org.apache.fop.apps.*;
-import org.springframework.http.*;
-import org.springframework.web.bind.annotation.*;
+import org.apache.fop.apps.Fop;
+import org.apache.fop.apps.FopFactory;
+import org.apache.fop.apps.MimeConstants;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.xml.transform.*;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.sax.SAXResult;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.net.URI;
+
+import org.xml.sax.SAXException;
 
 @RestController
 public class PdfController {
@@ -48,7 +63,7 @@ public class PdfController {
             transformer.transform(new StreamSource(xmlStream), new StreamResult(foStream));
 
             // Step 2: Transform XSL-FO → PDF using Apache FOP
-            FopFactory fopFactory = FopFactory.newInstance(new File(".").toURI());
+            FopFactory fopFactory = createFopFactory();
             ByteArrayOutputStream pdfStream = new ByteArrayOutputStream();
             Fop fop = fopFactory.newFop(MimeConstants.MIME_PDF, pdfStream);
             Transformer pdfTransformer = factory.newTransformer();
@@ -65,5 +80,24 @@ public class PdfController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(("PDF generation error: " + e.getMessage()).getBytes(StandardCharsets.UTF_8));
         }
+    }
+
+    private FopFactory createFopFactory() throws IOException, SAXException {
+        String configPath = System.getenv("FOP_CONFIG_PATH");
+        String resourceBase = System.getenv("FOP_RESOURCE_BASE");
+
+        URI baseUri = resourceBase != null && !resourceBase.isBlank()
+                ? new File(resourceBase).toURI()
+                : new File(".").toURI();
+
+        if (configPath != null && !configPath.isBlank()) {
+            File configFile = new File(configPath);
+            if (!configFile.isFile()) {
+                throw new FileNotFoundException("FOP configuration file not found at " + configPath);
+            }
+            return FopFactory.newInstance(configFile.toURI(), baseUri);
+        }
+
+        return FopFactory.newInstance(baseUri);
     }
 }

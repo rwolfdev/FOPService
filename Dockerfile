@@ -3,6 +3,7 @@ WORKDIR /app
 COPY . .
 RUN chmod +x gradlew
 RUN ./gradlew bootJar
+RUN mkdir -p /opt/fop/config /opt/fop/resources
 
 FROM gcr.io/distroless/java21-debian12 AS final
 
@@ -17,4 +18,10 @@ LABEL maintainer="Robert Wolf <hello@robertwolf.dev>" \
 
 
 COPY --from=build /app/build/libs/*.jar /app.jar
+COPY --from=build /opt/fop /opt/fop
+
+ENV FOP_CONFIG_PATH=/opt/fop/config/fop.xconf
+ENV FOP_RESOURCE_BASE=/opt/fop/resources
+
+VOLUME ["/opt/fop/config", "/opt/fop/resources"]
 ENTRYPOINT ["java", "-jar", "/app.jar"]

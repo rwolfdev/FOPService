@@ -114,6 +114,20 @@ docker build -t fopservice .
 docker run -p 5000:5000 fopservice --server.port=5000
 ```
 
+### Mount configuration and resources
+
+You can mount a host directory to provide a custom `fop.xconf` (including fonts, logos, and other resources):
+
+```bash
+docker run -p 5000:5000 \
+  -v $(pwd)/fop-config:/opt/fop \
+  -e FOP_CONFIG_PATH=/opt/fop/config/fop.xconf \
+  -e FOP_RESOURCE_BASE=/opt/fop/resources \
+  fopservice --server.port=5000
+```
+
+Place your `fop.xconf` in `fop-config/config/` and any referenced assets (fonts, images, etc.) under `fop-config/resources/` so they are available to Apache FOP inside the container.
+
 ---
 
 ## 📂 Project Structure
