@@ -95,7 +95,9 @@ public class PdfController {
             if (!configFile.isFile()) {
                 throw new FileNotFoundException("FOP configuration file not found at " + configPath);
             }
-            return FopFactory.newInstance(configFile.toURI(), baseUri);
+            FopFactory fopFactory = FopFactory.newInstance(configFile);
+            fopFactory.setBaseURI(baseUri.toString());
+            return fopFactory;
         }
 
         return FopFactory.newInstance(baseUri);
