@@ -17,4 +17,5 @@ LABEL maintainer="Robert Wolf <hello@robertwolf.dev>" \
 
 
 COPY --from=build /app/build/libs/*.jar /app.jar
+VOLUME ["/data/fonts"]
 ENTRYPOINT ["java", "-jar", "/app.jar"]
