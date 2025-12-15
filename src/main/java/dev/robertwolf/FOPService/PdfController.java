@@ -11,9 +11,53 @@ import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 @RestController
 public class PdfController {
+
+    private final Path fontStorageDir = Paths.get("/data/fonts");
+
+    public PdfController() {
+        try {
+            Files.createDirectories(fontStorageDir);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to initialize font storage directory", e);
+        }
+    }
+
+    // Endpoint 3: Upload custom font files to be used automatically during rendering
+    @PostMapping(value = "/fonts/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<String> uploadFonts(@RequestPart("fonts") MultipartFile[] fontFiles) {
+        if (fontFiles == null || fontFiles.length == 0) {
+            return ResponseEntity.badRequest().body("No font files provided.");
+        }
+
+        int storedFonts = 0;
+
+        for (MultipartFile fontFile : fontFiles) {
+            if (fontFile.isEmpty() || fontFile.getOriginalFilename() == null) {
+                continue;
+            }
+
+            try {
+                Path target = fontStorageDir.resolve(Path.of(fontFile.getOriginalFilename()).getFileName());
+                Files.write(target, fontFile.getBytes());
+                storedFonts++;
+            } catch (IOException e) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body("Failed to store font '" + fontFile.getOriginalFilename() + "': " + e.getMessage());
+            }
+        }
+
+        if (storedFonts == 0) {
+            return ResponseEntity.badRequest().body("No valid font files were uploaded.");
+        }
+
+        return ResponseEntity.ok("Stored " + storedFonts + " font file(s). They will be used for subsequent renders.");
+    }
 
     // Endpoint 1: Accepts multipart/form-data with file uploads (xml and xsl)
     @PostMapping(value = "/render/files", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -48,7 +92,7 @@ public class PdfController {
             transformer.transform(new StreamSource(xmlStream), new StreamResult(foStream));
 
             // Step 2: Transform XSL-FO → PDF using Apache FOP
-            FopFactory fopFactory = FopFactory.newInstance(new File(".").toURI());
+            FopFactory fopFactory = FopFactory.newInstance(new File(".").toURI(), buildFopConfiguration());
             ByteArrayOutputStream pdfStream = new ByteArrayOutputStream();
             Fop fop = fopFactory.newFop(MimeConstants.MIME_PDF, pdfStream);
             Transformer pdfTransformer = factory.newTransformer();
@@ -65,5 +109,15 @@ public class PdfController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(("PDF generation error: " + e.getMessage()).getBytes(StandardCharsets.UTF_8));
         }
+    }
+
+    private InputStream buildFopConfiguration() throws IOException {
+        String fontDir = fontStorageDir.toAbsolutePath().toString();
+        String config = "<fop version=\"1.0\">" +
+                "<fonts>" +
+                "<directory recursive=\"true\">" + fontDir + "</directory>" +
+                "</fonts>" +
+                "</fop>";
+        return new ByteArrayInputStream(config.getBytes(StandardCharsets.UTF_8));
     }
 }

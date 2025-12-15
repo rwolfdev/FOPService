@@ -19,4 +19,5 @@ LABEL maintainer="Robert Wolf <hello@robertwolf.dev>" \
 ENV FILE_UPLOAD_MAX_SIZE=200MB
 
 COPY --from=build /app/build/libs/*.jar /app.jar
+VOLUME ["/data/fonts"]
 ENTRYPOINT ["java", "-jar", "/app.jar"]
